@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PSD Layer Extractor</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 PSD Layer Extractor</h1>
+    <form id="upload-form">
+      <input type="file" name="file" accept=".zip" required />
+      <button type="submit">Upload & Process</button>
+    </form>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("upload-form");
+    const statusDiv = document.getElementById("status");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      statusDiv.innerHTML = "⏳ Processing... please wait.";
+
+      const formData = new FormData(form);
+      const response = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        statusDiv.innerHTML = "❌ Something went wrong!";
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "extracted_layers.zip";
+      a.click();
+      statusDiv.innerHTML = "✅ Done! Your ZIP has been downloaded.";
+    });
+  </script>
+</body>
+</html>
