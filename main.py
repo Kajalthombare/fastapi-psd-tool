@@ -57,13 +57,29 @@ def export_layers_full_canvas(layers, output_folder, parent="", canvas_size=None
                     full_img.paste(img, layer.offset)
                     full_img.save(os.path.join(output_folder, f"{safe_name}_full.png"))
 
-# ---------------- Core Processing Function ----------------
+# ---------------- Core Processing Functions ----------------
+
+def process_psd_file(psd_path, output_zip_name="output_layers.zip"):
+    output_base = "output_single"
+    if os.path.exists(output_base):
+        shutil.rmtree(output_base)
+    os.makedirs(output_base, exist_ok=True)
+
+    psd_name = os.path.splitext(os.path.basename(psd_path))[0]
+    output_folder = os.path.join(output_base, psd_name)
+    os.makedirs(output_folder, exist_ok=True)
+
+    psd = PSDImage.open(psd_path)
+    export_layers_simple(psd, output_folder)
+    export_layers_full_canvas(psd, output_folder)
+
+    shutil.make_archive(output_zip_name.replace(".zip", ""), 'zip', output_base)
+    return output_zip_name
 
 def process_psds_from_zip_one_folder(zip_path, output_zip_name="swiggy_layers.zip"):
     temp_extract = "temp_psds"
     output_base = "output_layers"
 
-    # Cleanup old runs
     for path in [temp_extract, output_base, output_zip_name]:
         if os.path.exists(path):
             if os.path.isdir(path):
@@ -71,32 +87,24 @@ def process_psds_from_zip_one_folder(zip_path, output_zip_name="swiggy_layers.zi
             else:
                 os.remove(path)
 
-    # Unzip PSD files
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(temp_extract)
 
     os.makedirs(output_base, exist_ok=True)
 
-    # Process each PSD
     for root, _, files in os.walk(temp_extract):
         for file in files:
             if file.lower().endswith(".psd"):
                 psd_path = os.path.join(root, file)
                 psd_name = os.path.splitext(file)[0]
-
                 output_folder = os.path.join(output_base, psd_name)
                 os.makedirs(output_folder, exist_ok=True)
 
                 psd = PSDImage.open(psd_path)
-                print(f"Processing {file}...")
-
                 export_layers_simple(psd, output_folder)
                 export_layers_full_canvas(psd, output_folder)
 
-    # Zip output folder
     shutil.make_archive(output_zip_name.replace(".zip", ""), 'zip', output_base)
-    print(f"\n✅ Done! Download your layers from '{output_zip_name}'")
-
     return output_zip_name
 
 # ---------------- Routes ----------------
@@ -106,17 +114,22 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post("/upload")
-async def upload_zip(file: UploadFile = File(...)):
+async def upload_file(file: UploadFile = File(...)):
     os.makedirs("uploads", exist_ok=True)
     os.makedirs("outputs", exist_ok=True)
 
-    # Save uploaded ZIP
-    input_zip = f"uploads/{file.filename}"
+    file_ext = file.filename.split(".")[-1].lower()
+    input_path = f"uploads/{file.filename}"
     output_zip = f"outputs/{os.path.splitext(file.filename)[0]}_layers.zip"
 
-    with open(input_zip, "wb") as buffer:
+    with open(input_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Process PSDs and return ZIP
-    process_psds_from_zip_one_folder(input_zip, output_zip)
-    return FileResponse(output_zip, filename=os.path.basename(output_zip))
+    if file_ext == "zip":
+        result = process_psds_from_zip_one_folder(input_path, output_zip)
+    elif file_ext == "psd":
+        result = process_psd_file(input_path, output_zip)
+    else:
+        return {"error": "Unsupported file type. Please upload PSD or ZIP."}
+
+    return FileResponse(result, filename=os.path.basename(result))
