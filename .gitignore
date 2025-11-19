@@ -1,0 +1,11 @@
+uploads/
+outputs/
+temp_psds/
+__pycache__/
+*.psd
+*.zip
+*.png
+*.webp
+*.pyc
+.env
+
