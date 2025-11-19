@@ -72,7 +72,7 @@ def export_layers_simple(layers, output_folder):
 
             # Save compressed PNG and WEBP
             compress_png(img, full_path)
-            save_webp(img, full_path)
+            #save_webp(img, full_path)
 
 
 def export_layers_full_canvas(layers, output_folder, canvas_size=None):
@@ -104,7 +104,7 @@ def export_layers_full_canvas(layers, output_folder, canvas_size=None):
 
             # Save compressed PNG and WEBP
             compress_png(full_img, full_path)
-            save_webp(full_img, full_path)
+            #save_webp(full_img, full_path)
 
 
 # =====================================================
