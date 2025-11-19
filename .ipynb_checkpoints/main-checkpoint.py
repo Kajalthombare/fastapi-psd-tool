@@ -74,9 +74,37 @@ def export_layers_simple(layers, output_folder):
             compress_png(img, full_path)
             #save_webp(img, full_path)
 
+from io import BytesIO
+
+def save_png_under_size(image: Image.Image, output_path: str, max_size_kb=500):
+    """
+    Resize image until PNG file size is under max_size_kb.
+    """
+    width, height = image.size
+    scale_factor = 0.9  # reduce by 10% each loop
+
+    while True:
+        buffer = BytesIO()
+        temp_img = image.resize((int(width), int(height)), Image.LANCZOS)
+        temp_img.save(buffer, format="PNG", optimize=True)
+
+        size_kb = buffer.tell() / 1024
+
+        if size_kb <= max_size_kb:
+            # Save final optimized PNG
+            temp_img.save(output_path, format="PNG", optimize=True)
+            return
+
+        # Reduce dimensions
+        width = int(width * scale_factor)
+        height = int(height * scale_factor)
+
+        # Minimum protection
+        if width < 100 or height < 100:
+            temp_img.save(output_path, format="PNG", optimize=True)
+            return
 
 def export_layers_full_canvas(layers, output_folder, canvas_size=None):
-    """Exports full-canvas version with WebP."""
     if canvas_size is None:
         if isinstance(layers, PSDImage):
             canvas_size = (layers.width, layers.height)
@@ -95,16 +123,15 @@ def export_layers_full_canvas(layers, output_folder, canvas_size=None):
             safe_name = clean_layer_name(layer.name)
             file_name = f"{safe_name}_full.png"
 
-            # Handle duplicates
             file_name = handle_duplicate_name(output_folder, file_name)
             full_path = os.path.join(output_folder, file_name)
 
             full_img = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
             full_img.paste(img, layer.offset)
 
-            # Save compressed PNG and WEBP
-            compress_png(full_img, full_path)
-            #save_webp(full_img, full_path)
+            # 🔥 Save resized until <500 KB
+            save_png_under_size(full_img, full_path, max_size_kb=500)
+
 
 
 # =====================================================
